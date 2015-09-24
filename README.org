@@ -1,0 +1,7 @@
+* ido match modes
+
+Modifies =ido-mode= so that:
+
+1. You can cycle through different ways of matching input with the keyboard
+2. You can see what kind of input matching is selected in the minibuffer
+3. You can match in a space-separated alternative to flx
