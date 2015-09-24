@@ -4,7 +4,7 @@
 
 ;; Author: Tom Hinton <t@larkery.com>
 ;; Version: 1.0.0
-;; Package-Requires: ((ido))
+;; Package-Requires: ((ido) (cl))
 ;; Keywords: convenience
 ;; URL: https://github.com/larkery/ido-match-modes.el
 
@@ -59,7 +59,6 @@
 
 ;;; Code:
 
-
 (defvar ido-match-modes-enabled nil)
 
 (defcustom ido-match-modes-list '(substring words prefix)
@@ -105,6 +104,7 @@
                (not (eq ido-match-modes-old-space-command #'self-insert-command)))
       (define-key ido-completion-map " " ido-match-modes-old-space-command))))
 
+;; this could be neater
 (defun ido-match-modes-cycle ()
   (interactive)
 
@@ -232,3 +232,5 @@ positive one make sure it's on."
           (not ido-match-modes-enabled))
       (ido-match-modes-enable)
     (ido-match-modes-disable)))
+
+;;; ido-match-modes.el ends here
