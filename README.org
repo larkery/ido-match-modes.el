@@ -2,6 +2,30 @@
 
 Modifies =ido-mode= so that:
 
-1. You can cycle through different ways of matching input with the keyboard
-2. You can see what kind of input matching is selected in the minibuffer
-3. You can match in a space-separated alternative to flx
+1. You can cycle different ways of matching the input, with a bit of feedback
+
+   I find it hard to remember that =C-t= means toggle regex matching, =C-p= means toggle prefix matching and so on.
+   This adds a single shortcut (=C-S-SPC=) during ido completion which cycles through matching methods. Methods understood are:
+
+   - substring (normal behaviour)
+   - prefix
+   - regex
+   - flex (although not the better flx-ido; pull request welcome if you would find it useful)
+   - substrings; a new addition, which is like flex but more controlled
+
+   Feedback is supplied by adding a letter to the right of the minibuffer prompt, before the ido prospects list.
+
+2. You can do flex matching with defined breaking points, and with the regex anchor characters; this is what the customisation calls matching on substrings. For example:
+
+   - =custom grou= would match:
+     - =customize-group=
+     - =customize-group-other-window=
+     - =customize-apropos-groups=
+
+     It is like the regex =(custom).+(grou).+=
+   - =widget js$= would match
+     - =all-widgets.js=
+     - =widgetsjs=
+     - =compose-widget-with-sproject.js=
+
+     It is like the regex =(widget).+(js)$

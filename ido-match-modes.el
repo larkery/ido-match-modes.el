@@ -1,3 +1,65 @@
+;;; ido-match-modes.el --- Cycle ido matching methods from in ido
+
+;; Copyright (C) whoever, I don't care.
+
+;; Author: Tom Hinton <t@larkery.com>
+;; Version: 1.0.0
+;; Package-Requires: ((ido))
+;; Keywords: convenience
+;; URL: https://github.com/larkery/ido-match-modes.el
+
+;; This program is free software; you can redistribute it and/or modify
+;; it under the terms of the GNU General Public License as published by
+;; the Free Software Foundation, either version 3 of the License, or
+;; (at your option) any later version.
+
+;; This program is distributed in the hope that it will be useful,
+;; but WITHOUT ANY WARRANTY; without even the implied warranty of
+;; MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+;; GNU General Public License for more details.
+
+;; You should have received a copy of the GNU General Public License
+;; along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+;;; Commentary:
+
+;; Rebinds C-S-SPC in `ido-mode' so that it rotates through a list of
+;; ways to match user input. You can customize the list of ways
+;; (`ido-match-modes-list'), and the display of the current method
+;; indicator in the ido-match-modes custom group.
+
+;; to enable, invoke `ido-match-modes-toggle'
+;; (negative argument means disable no matter what, positive means enable no matter what)
+
+;; Most of the modes are as normal in ido:
+;; - typical 'entire substring' mode (what ido does by default)
+;; - regex matching (what ido does if you set `ido-enable-regexp')
+;; - flex matching (what ido does if you set `ido-enable-flex-matching')
+;; - prefix matching (what ido does if you set `ido-enable-prefix')
+
+;; there is also a 'words' or 'substrings' matching mode added, which
+;; is like a slightly less sledgehammery version of flex
+;; matching. Where flex matching inserts a wildcard between every
+;; character of the input, so 'abcd' matches 'Any big sequenCe
+;; Containing D', the substrings mode inserts wildcards between spaces
+;; in the input, so the input 'customize group' matches
+;; 'customize-group', 'customize-group-other-window',
+;; 'customize-some-group' and so on. I prefer this to flex matching,
+;; as I find I usually know words in the name of my thing, and type
+;; those rather than knowing a sequence of characters.
+
+;; For convenience, the substrings mode also passes through the start
+;; and end anchors, so that "some file .el$" will match any input which
+;; - contains the word "some" and the word "file", in that order
+;; - ends with ".el"
+;; i.e. it matches the regex ".+some.+file\.el$"
+
+;; in substrings mode, SPC is re-bound to type space; normally SPC
+;; does something else in ido.
+
+;;; Code:
+
+
 (defvar ido-match-modes-enabled nil)
 
 (defcustom ido-match-modes-list '(substring words prefix)
@@ -31,6 +93,18 @@
   (push (cons symbol (eval symbol)) ido-match-old-values)
   (eval `(setf ,symbol ,new-value)))
 
+(defun ido-match-modes-hack-spacebar ()
+  (if (eq ido-match-modes-mode 'words)
+      (let ((existing-command  (lookup-key ido-completion-map " ")))
+        (when (not (eq existing-command #'self-insert-command))
+          ;; remember how to unhack space bar
+          (define-key ido-completion-map " " #'self-insert-command)
+          ;; hack space bar
+          (setf ido-match-modes-old-space-commmand existing-command)))
+    (when (and ido-match-modes-old-space-command
+               (not (eq ido-match-modes-old-space-command #'self-insert-command)))
+      (define-key ido-completion-map " " ido-match-modes-old-space-command))))
+
 (defun ido-match-modes-cycle ()
   (interactive)
 
@@ -46,12 +120,7 @@
          (car ido-match-modes-list)
          'substring))
 
-  (if (eq ido-match-modes-mode 'words)
-      ;; remember how to unhack space bar
-      (setf ido-match-modes-old-space-commmand (lookup-key ido-completion-map " "))
-
-      ;; hack space bar
-      (define-key ido-completion-map " " #'self-insert-command))
+  (ido-match-modes-hack-spacebar)
 
   (setf ido-match-modes-lighter
         (case ido-match-modes-mode
@@ -123,31 +192,43 @@
     (apply o args)))
 
 (defun ido-match-modes--bind-keys ()
-  (define-key ido-completion-map (kbd "C-.") #'ido-match-modes-cycle))
+  (ido-match-modes-hack-spacebar)
+  (define-key ido-completion-map (kbd "C-S-SPC") #'ido-match-modes-cycle))
 
-(defun ido-match-modes-toggle ()
-  (interactive)
-  (if (not ido-match-modes-enabled)
-      (progn
-        ;; enable
-        (advice-add 'ido-completions :around #'ido-match-modes--adv-completions)
-        (advice-add 'ido-set-matches :around #'ido-match-modes--adv-set-matches)
-        (add-hook 'ido-setup-hook #'ido-match-modes--bind-keys)
-        (ido-match-remember 'ido-enable-flex-matching nil)
-        (ido-match-remember 'ido-enable-regexp nil)
-        (ido-match-remember 'ido-enable-prefix nil)
-        (setf ido-match-modes-old-space-commmand (lookup-key ido-completion-map " "))
-        (setf ido-match-modes-mode (or (car ido-match-modes-list) 'substring)))
+(defun ido-match-modes-enable ()
+  ;; enable
+  (unless ido-match-modes-enabled
+    (setf ido-match-modes-enabled t)
+    (advice-add 'ido-completions :around #'ido-match-modes--adv-completions)
+    (advice-add 'ido-set-matches :around #'ido-match-modes--adv-set-matches)
+    (add-hook 'ido-setup-hook #'ido-match-modes--bind-keys)
+    (ido-match-remember 'ido-enable-flex-matching nil)
+    (ido-match-remember 'ido-enable-regexp nil)
+    (ido-match-remember 'ido-enable-prefix nil)
+    (setf ido-match-modes-old-space-commmand (lookup-key ido-completion-map " "))
+    (setf ido-match-modes-mode (or (car ido-match-modes-list) 'substring))))
 
-    (progn
-      ;; disable
-      (advice-remove 'ido-completions #'ido-match-modes--adv-completions)
-      (advice-remove 'ido-set-matches #'ido-match-modes--adv-set-matches)
-      (remove-hook 'ido-setup-hook #'ido-match-modes--bind-keys)
-      (dolist (old-value ido-match-old-values)
-        (eval `(setf ,(car old-value) ,(cdr old-value))))
-      (setf ido-match-old-values nil)
-      (when ido-match-modes-old-space-command
-        (define-key ido-completion-map " " ido-match-modes-old-space-command))))
+(defun ido-match-modes-disable ()
+  (when ido-match-modes-enabled
+    (setf ido-match-modes-enabled nil)
+    (advice-remove 'ido-completions #'ido-match-modes--adv-completions)
+    (advice-remove 'ido-set-matches #'ido-match-modes--adv-set-matches)
+    (remove-hook 'ido-setup-hook #'ido-match-modes--bind-keys)
+    (dolist (old-value ido-match-old-values)
+      (eval `(setf ,(car old-value) ,(cdr old-value))))
+    (setf ido-match-old-values nil)
+    (when ido-match-modes-old-space-command
+      (define-key ido-completion-map " " ido-match-modes-old-space-command))))
 
-  (setf ido-match-modes-enabled (not ido-match-modes-enabled)))
+
+;;;###autoload
+(defun ido-match-modes-toggle (arg)
+  "Switch ido-match-modes on if it's off or off if it's on.
+With a negative prefix argument, make sure it's off, and with a
+positive one make sure it's on."
+  (interactive "P")
+
+  (if (or (and arg (> (prefix-numeric-value arg) 0))
+          (not ido-match-modes-enabled))
+      (ido-match-modes-enable)
+    (ido-match-modes-disable)))
