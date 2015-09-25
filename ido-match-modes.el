@@ -79,6 +79,7 @@
 (defvar ido-match-old-values nil)
 (defvar ido-match-modes-lighter "")
 (defvar ido-match-modes-old-space-command nil)
+(defvar ido-match-modes-last-input nil)
 
 (defvar ido-match-mode-bindings
   ;;        flx pre rx
@@ -156,28 +157,39 @@
     (concat ido-match-modes-lighter (apply o args))))
 
 (defun ido-match-modes--words-to-rx (words)
-  (let* ((words (string-trim words))
-         (hat   (string-match "^\\^" words))
-         (dollar (string-match "\\$$" words))
-         (words (substring words
-                           (if hat 1 0)
-                           (if dollar
-                               (- (length words) 1)
-                             (length words)))))
-    (concat
-     (if hat "^" "")
-     (mapconcat
-      (lambda (x) (if (zerop (length x)) "" (concat "\\(" (regexp-quote x) "\\)")))
-      (split-string words " +")
-      ".*")
-     (if dollar "$" "")
-     )))
+  (if words
+   (let* ((words (string-trim words))
+          (hat   (string-match "^\\^" words))
+          (dollar (string-match "\\$$" words))
+          (words (substring words
+                            (if hat 1 0)
+                            (if dollar
+                                (- (length words) 1)
+                              (length words)))))
+     (concat
+      (if hat "^" "")
+      (mapconcat
+       (lambda (x) (if (zerop (length x)) "" (concat "\\(" (regexp-quote x) "\\)")))
+       (split-string words " +")
+       ".*")
+      (if dollar "$" "")
+      ))
+   ""))
 
 (defun ido-match-modes--adv-set-matches (o &rest args)
   ;; depending on mode, we fiddle various ido variables
   (ido-match-mode--set-bindings) ;; smex and stuff mess with these settings by turning on flx. kill!
+
   (if (eq ido-match-modes-mode 'words)
-      (let ((original-text ido-text))
+      (let ((original-text ido-text)
+            (original-rx (ido-match-modes--words-to-rx ido-match-modes-last-input)))
+
+        (if (string-equal original-text original-rx)
+            ;; we have gone wrong somewhere so just unhack it
+            (setf ido-text ido-match-modes-last-input
+                  original-text ido-match-modes-last-input)
+          (setf ido-match-modes-last-input original-text))
+
         (if (string-match "[\\^\\$ ]" ido-text)
             (setf ido-enable-regexp t
                   ido-text  (ido-match-modes--words-to-rx ido-text))
@@ -189,7 +201,13 @@
                   ido-enable-regexp nil))
           result))
 
-    (apply o args)))
+    (progn
+      (setf ido-match-modes-last-input ido-text)
+      (apply o args))))
+
+(defun ido-match-modes--adv-exit-mb (o &rest args)
+  (setf ido-text ido-match-modes-last-input)
+  (apply o args))
 
 (defun ido-match-modes--bind-keys ()
   (ido-match-modes-hack-spacebar)
@@ -201,6 +219,9 @@
     (setf ido-match-modes-enabled t)
     (advice-add 'ido-completions :around #'ido-match-modes--adv-completions)
     (advice-add 'ido-set-matches :around #'ido-match-modes--adv-set-matches)
+    (advice-add 'ido-exit-minibuffer :around #'ido-match-modes--adv-exit-mb)
+    (advice-add 'ido-kill-buffer-at-head :around #'ido-match-modes--adv-exit-mb)
+    (advice-add 'ido-delete-file-at-head :around #'ido-match-modes--adv-exit-mb)
     (add-hook 'ido-setup-hook #'ido-match-modes--bind-keys)
     (ido-match-remember 'ido-enable-flex-matching nil)
     (ido-match-remember 'ido-enable-regexp nil)
@@ -213,6 +234,9 @@
     (setf ido-match-modes-enabled nil)
     (advice-remove 'ido-completions #'ido-match-modes--adv-completions)
     (advice-remove 'ido-set-matches #'ido-match-modes--adv-set-matches)
+    (advice-remove 'ido-exit-minibuffer #'ido-match-modes--adv-exit-mb)
+    (advice-add 'ido-kill-buffer-at-head #'ido-match-modes--adv-exit-mb)
+    (advice-add 'ido-delete-file-at-head #'ido-match-modes--adv-exit-mb)
     (remove-hook 'ido-setup-hook #'ido-match-modes--bind-keys)
     (dolist (old-value ido-match-old-values)
       (eval `(setf ,(car old-value) ,(cdr old-value))))
