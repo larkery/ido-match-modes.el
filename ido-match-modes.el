@@ -100,7 +100,7 @@
           ;; remember how to unhack space bar
           (define-key ido-completion-map " " #'self-insert-command)
           ;; hack space bar
-          (setf ido-match-modes-old-space-commmand existing-command)))
+          (setf ido-match-modes-old-space-command existing-command)))
     (when (and ido-match-modes-old-space-command
                (not (eq ido-match-modes-old-space-command #'self-insert-command)))
       (define-key ido-completion-map " " ido-match-modes-old-space-command))))
@@ -112,7 +112,7 @@
   (if (eq ido-match-modes-mode 'words)
       ;; unhack space bar
       (define-key ido-completion-map " "
-        ido-match-modes-old-space-commmand))
+        ido-match-modes-old-space-command))
 
   (setf ido-match-modes-mode
         (or
@@ -178,35 +178,45 @@
 
 (defun ido-match-modes--adv-set-matches (o &rest args)
   ;; depending on mode, we fiddle various ido variables
-  (ido-match-mode--set-bindings) ;; smex and stuff mess with these settings by turning on flx. kill!
+  (ido-match-mode--set-bindings) ;; smex and stuff mess with these settings by turning on flx.
 
-  (if (eq ido-match-modes-mode 'words)
-      (let ((original-text ido-text)
-            (original-rx (ido-match-modes--words-to-rx ido-match-modes-last-input)))
+  (setf ido-match-modes-last-input ido-text)
 
-        (if (string-equal original-text original-rx)
-            ;; we have gone wrong somewhere so just unhack it
-            (setf ido-text ido-match-modes-last-input
-                  original-text ido-match-modes-last-input)
-          (setf ido-match-modes-last-input original-text))
+  (case ido-match-modes-mode
+    (words
+     (let ((is-special (string-match "[\\^\\$ ]" ido-text))
+           (original-text ido-text)
+           result)
 
-        (if (string-match "[\\^\\$ ]" ido-text)
-            (setf ido-enable-regexp t
-                  ido-text  (ido-match-modes--words-to-rx ido-text))
-          (setf ido-enable-regexp nil))
+       (setf ido-enable-regexp is-special)
+       (when is-special
+         (setf ido-text (ido-match-modes--words-to-rx ido-text))
 
-        (let ((result (apply o args)))
-          (unless ido-matches
-            (setf ido-text original-text
-                  ido-enable-regexp nil))
-          result))
+         ;; (with-current-buffer (get-buffer-create "blah")
+         ;;   (end-of-buffer)
+         ;;   (insert (format "ido-text: %s\n" original-text))
+         ;;   (insert (format "ido-rx: %s\n" ido-text)))
+         )
 
-    (progn
-      (setf ido-match-modes-last-input ido-text)
-      (apply o args))))
+       (setf result (apply o args))
+       (when (and is-special (not result))
+         ;; apparently need to undo here
+         (setf ido-text original-text
+               ido-enable-regexp nil)
+         ;; (with-current-buffer (get-buffer-create "blah")
+         ;;   (end-of-buffer)
+         ;;   (insert (format "result invalid\n"))
+         ;;   (insert (format "ido-text: %s\n" ido-text)))
+
+
+         )
+       result
+       ))
+
+    (t (apply o args))))
 
 (defun ido-match-modes--adv-exit-mb (o &rest args)
-  (setf ido-text ido-match-modes-last-input)
+  (setf ido-text (or ido-match-modes-last-input ido-text))
   (apply o args))
 
 (defun ido-match-modes--bind-keys ()
@@ -226,7 +236,7 @@
     (ido-match-remember 'ido-enable-flex-matching nil)
     (ido-match-remember 'ido-enable-regexp nil)
     (ido-match-remember 'ido-enable-prefix nil)
-    (setf ido-match-modes-old-space-commmand (lookup-key ido-completion-map " "))
+    (setf ido-match-modes-old-space-command (lookup-key ido-completion-map " "))
     (setf ido-match-modes-mode (or (car ido-match-modes-list) 'substring))))
 
 (defun ido-match-modes-disable ()
@@ -235,8 +245,8 @@
     (advice-remove 'ido-completions #'ido-match-modes--adv-completions)
     (advice-remove 'ido-set-matches #'ido-match-modes--adv-set-matches)
     (advice-remove 'ido-exit-minibuffer #'ido-match-modes--adv-exit-mb)
-    (advice-add 'ido-kill-buffer-at-head #'ido-match-modes--adv-exit-mb)
-    (advice-add 'ido-delete-file-at-head #'ido-match-modes--adv-exit-mb)
+    (advice-remove 'ido-kill-buffer-at-head #'ido-match-modes--adv-exit-mb)
+    (advice-remove 'ido-delete-file-at-head #'ido-match-modes--adv-exit-mb)
     (remove-hook 'ido-setup-hook #'ido-match-modes--bind-keys)
     (dolist (old-value ido-match-old-values)
       (eval `(setf ,(car old-value) ,(cdr old-value))))
