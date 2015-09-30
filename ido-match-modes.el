@@ -190,26 +190,16 @@
 
        (setf ido-enable-regexp is-special)
        (when is-special
-         (setf ido-text (ido-match-modes--words-to-rx ido-text))
-
-         ;; (with-current-buffer (get-buffer-create "blah")
-         ;;   (end-of-buffer)
-         ;;   (insert (format "ido-text: %s\n" original-text))
-         ;;   (insert (format "ido-rx: %s\n" ido-text)))
-         )
+         (setf ido-text (ido-match-modes--words-to-rx ido-text)))
 
        (setf result (apply o args))
-       (when (and is-special (not result))
+
+       (when (and is-special (not ido-matches))
          ;; apparently need to undo here
+
          (setf ido-text original-text
-               ido-enable-regexp nil)
-         ;; (with-current-buffer (get-buffer-create "blah")
-         ;;   (end-of-buffer)
-         ;;   (insert (format "result invalid\n"))
-         ;;   (insert (format "ido-text: %s\n" ido-text)))
+               ido-enable-regexp nil))
 
-
-         )
        result
        ))
 
