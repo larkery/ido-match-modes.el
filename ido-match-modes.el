@@ -129,7 +129,8 @@
           (regex  " R")
           (words  " W")
           (flex   " F")
-          (prefix " P")))
+          (prefix " P")
+          (t " ???")))
 
   (add-face-text-property 1 (length ido-match-modes-lighter)
                           'ido-match-modes-indicator-face nil
@@ -216,6 +217,7 @@
 (defun ido-match-modes-enable ()
   ;; enable
   (unless ido-match-modes-enabled
+    (message "enabling ido-match-modes")
     (setf ido-match-modes-enabled t)
     (advice-add 'ido-completions :around #'ido-match-modes--adv-completions)
     (advice-add 'ido-set-matches :around #'ido-match-modes--adv-set-matches)
@@ -226,12 +228,12 @@
     (ido-match-remember 'ido-enable-flex-matching nil)
     (ido-match-remember 'ido-enable-regexp nil)
     (ido-match-remember 'ido-enable-prefix nil)
-    (setf ido-match-modes-old-space-command (lookup-key ido-completion-map " "))
     (setf ido-match-modes-mode (or (car ido-match-modes-list) 'substring))))
 
 (defun ido-match-modes-disable ()
   (when ido-match-modes-enabled
     (setf ido-match-modes-enabled nil)
+    (message "disabling ido-match-modes")
     (advice-remove 'ido-completions #'ido-match-modes--adv-completions)
     (advice-remove 'ido-set-matches #'ido-match-modes--adv-set-matches)
     (advice-remove 'ido-exit-minibuffer #'ido-match-modes--adv-exit-mb)
@@ -251,10 +253,12 @@
 With a negative prefix argument, make sure it's off, and with a
 positive one make sure it's on."
   (interactive "P")
-
+  (message "toggling ido-match-modes")
   (if (or (and arg (> (prefix-numeric-value arg) 0))
           (not ido-match-modes-enabled))
       (ido-match-modes-enable)
     (ido-match-modes-disable)))
+
+(provide 'ido-match-modes)
 
 ;;; ido-match-modes.el ends here
