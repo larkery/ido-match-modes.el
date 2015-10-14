@@ -123,19 +123,7 @@
 
   (ido-match-modes-hack-spacebar)
 
-  (setf ido-match-modes-lighter
-        (case ido-match-modes-mode
-          (substring " S")
-          (regex  " R")
-          (words  " W")
-          (flex   " F")
-          (prefix " P")
-          (t " ???")))
-
-  (add-face-text-property 1 (length ido-match-modes-lighter)
-                          'ido-match-modes-indicator-face nil
-                          ido-match-modes-lighter)
-
+  (ido-match-modes--update-lighter)
   ;; (setf ido-match-modes-lighter
   ;;       (format "%s %s %s %s" ido-match-modes-lighter
   ;;               ido-enable-flex-matching
@@ -144,18 +132,28 @@
 
   (ido-match-mode--set-bindings))
 
+(defun ido-match-modes--update-lighter ()
+  (setf ido-match-modes-lighter
+        (case ido-match-modes-mode
+          (substring " substring")
+          (regex  " regex")
+          (words  " words")
+          (flex   " flex")
+          (prefix " prefix")
+          (t " ???")))
+
+  (add-face-text-property 1 (length ido-match-modes-lighter)
+                          'ido-match-modes-indicator-face nil
+                          ido-match-modes-lighter))
+
 (defun ido-match-mode--set-bindings ()
   (let ((bindings (cdr (assoc ido-match-modes-mode ido-match-mode-bindings))))
     (setf ido-enable-flex-matching (nth 0 bindings)
           ido-enable-prefix (nth 1 bindings)
           ido-enable-regexp (nth 2 bindings))))
 
-(defun ido-match-modes--adv-completions (o &rest args)
-  ;; this messes with the common match prefix
-  (if (and (stringp ido-common-match-string)
-           (> (length ido-common-match-string) (length (car args))))
-      (apply o args)
-    (concat ido-match-modes-lighter (apply o args))))
+(defun ido-match-modes-display-lighter ()
+  (concat " " ido-match-modes-lighter))
 
 (defun ido-match-modes--words-to-rx (words)
   (if words
@@ -218,8 +216,9 @@
   ;; enable
   (unless ido-match-modes-enabled
     (message "enabling ido-match-modes")
+    (ido-match-modes--update-lighter)
     (setf ido-match-modes-enabled t)
-    (advice-add 'ido-completions :around #'ido-match-modes--adv-completions)
+    (add-hook 'ido-grid-mode-first-line #'ido-match-modes-display-lighter)
     (advice-add 'ido-set-matches :around #'ido-match-modes--adv-set-matches)
     (advice-add 'ido-exit-minibuffer :around #'ido-match-modes--adv-exit-mb)
     (advice-add 'ido-kill-buffer-at-head :around #'ido-match-modes--adv-exit-mb)
@@ -234,8 +233,8 @@
   (when ido-match-modes-enabled
     (setf ido-match-modes-enabled nil)
     (message "disabling ido-match-modes")
-    (advice-remove 'ido-completions #'ido-match-modes--adv-completions)
     (advice-remove 'ido-set-matches #'ido-match-modes--adv-set-matches)
+    (remove-hook 'ido-grid-mode-first-line  #'ido-match-modes-display-lighter)
     (advice-remove 'ido-exit-minibuffer #'ido-match-modes--adv-exit-mb)
     (advice-remove 'ido-kill-buffer-at-head #'ido-match-modes--adv-exit-mb)
     (advice-remove 'ido-delete-file-at-head #'ido-match-modes--adv-exit-mb)
