@@ -135,14 +135,14 @@
 (defun ido-match-modes--update-lighter ()
   (setf ido-match-modes-lighter
         (case ido-match-modes-mode
-          (substring " substring")
-          (regex  " regex")
-          (words  " words")
-          (flex   " flex")
-          (prefix " prefix")
+          (substring "sub")
+          (regex     "rx")
+          (words     "words")
+          (flex      "flx")
+          (prefix    "pre")
           (t " ???")))
 
-  (add-face-text-property 1 (length ido-match-modes-lighter)
+  (add-face-text-property 0 (length ido-match-modes-lighter)
                           'ido-match-modes-indicator-face nil
                           ido-match-modes-lighter))
 
@@ -216,7 +216,6 @@
   ;; enable
   (unless ido-match-modes-enabled
     (message "enabling ido-match-modes")
-    (ido-match-modes--update-lighter)
     (setf ido-match-modes-enabled t)
     (add-hook 'ido-grid-mode-first-line #'ido-match-modes-display-lighter)
     (advice-add 'ido-set-matches :around #'ido-match-modes--adv-set-matches)
@@ -227,7 +226,8 @@
     (ido-match-remember 'ido-enable-flex-matching nil)
     (ido-match-remember 'ido-enable-regexp nil)
     (ido-match-remember 'ido-enable-prefix nil)
-    (setf ido-match-modes-mode (or (car ido-match-modes-list) 'substring))))
+    (setf ido-match-modes-mode (or (car ido-match-modes-list) 'substring))
+    (ido-match-modes--update-lighter)))
 
 (defun ido-match-modes-disable ()
   (when ido-match-modes-enabled
