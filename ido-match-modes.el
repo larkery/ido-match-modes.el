@@ -4,7 +4,7 @@
 
 ;; Author: Tom Hinton <t@larkery.com>
 ;; Version: 1.0.0
-;; Package-Requires: ((ido) (cl))
+;; Package-Requires: ((ido) (cl) (s))
 ;; Keywords: convenience
 ;; URL: https://github.com/larkery/ido-match-modes.el
 
@@ -157,7 +157,7 @@
 
 (defun ido-match-modes--words-to-rx (words)
   (if words
-   (let* ((words (string-trim words))
+   (let* ((words (s-trim words))
           (hat   (string-match "^\\^" words))
           (dollar (string-match "\\$$" words))
           (words (substring words
