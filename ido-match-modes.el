@@ -59,6 +59,8 @@
 
 ;;; Code:
 
+(require 'cl)
+
 (defvar ido-match-modes-enabled nil)
 
 (defcustom ido-match-modes-list '(substring words prefix)
@@ -116,7 +118,7 @@
 
   (setf ido-match-modes-mode
         (or
-         (nth (1+ (or (position ido-match-modes-mode ido-match-modes-list) 0))
+         (nth (1+ (or (cl-position ido-match-modes-mode ido-match-modes-list) 0))
               ido-match-modes-list)
          (car ido-match-modes-list)
          'substring))
@@ -135,11 +137,11 @@
 (defun ido-match-modes--update-lighter ()
   (setf ido-match-modes-lighter
         (case ido-match-modes-mode
-          (substring "sub")
-          (regex     "rx")
-          (words     "words")
-          (flex      "flx")
-          (prefix    "pre")
+          (substring "match substring")
+          (regex     "match rx")
+          (words     "match words")
+          (flex      "match flx")
+          (prefix    "match prefix")
           (t " ???")))
 
   (add-face-text-property 0 (length ido-match-modes-lighter)
