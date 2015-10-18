@@ -4,7 +4,7 @@
 
 ;; Author: Tom Hinton <t@larkery.com>
 ;; Version: 1.0.0
-;; Package-Requires: ((ido) (cl))
+;; Package-Requires: ((ido) (cl) (s))
 ;; Keywords: convenience
 ;; URL: https://github.com/larkery/ido-match-modes.el
 
@@ -159,7 +159,7 @@
 
 (defun ido-match-modes--words-to-rx (words)
   (if words
-   (let* ((words (string-trim words))
+   (let* ((words (s-trim words))
           (hat   (string-match "^\\^" words))
           (dollar (string-match "\\$$" words))
           (words (substring words
@@ -219,7 +219,9 @@
   (unless ido-match-modes-enabled
     (message "enabling ido-match-modes")
     (setf ido-match-modes-enabled t)
-    (add-hook 'ido-grid-mode-first-line #'ido-match-modes-display-lighter)
+    ;; turn on lighter
+    (nconc ido-grid-mode-first-line (list #'ido-match-modes-display-lighter))
+
     (advice-add 'ido-set-matches :around #'ido-match-modes--adv-set-matches)
     (advice-add 'ido-exit-minibuffer :around #'ido-match-modes--adv-exit-mb)
     (advice-add 'ido-kill-buffer-at-head :around #'ido-match-modes--adv-exit-mb)
@@ -236,7 +238,8 @@
     (setf ido-match-modes-enabled nil)
     (message "disabling ido-match-modes")
     (advice-remove 'ido-set-matches #'ido-match-modes--adv-set-matches)
-    (remove-hook 'ido-grid-mode-first-line  #'ido-match-modes-display-lighter)
+    (delete #'ido-match-modes-display-lighter ido-grid-mode-first-line)
+    
     (advice-remove 'ido-exit-minibuffer #'ido-match-modes--adv-exit-mb)
     (advice-remove 'ido-kill-buffer-at-head #'ido-match-modes--adv-exit-mb)
     (advice-remove 'ido-delete-file-at-head #'ido-match-modes--adv-exit-mb)
