@@ -60,6 +60,7 @@
 ;;; Code:
 
 (require 'cl)
+(require 's)
 
 (defvar ido-match-modes-enabled nil)
 
