@@ -80,7 +80,7 @@
 
 (defvar ido-match-modes-mode nil)
 (defvar ido-match-old-values nil)
-(defvar ido-match-modes-lighter "")
+
 (defvar ido-match-modes-old-space-command nil)
 (defvar ido-match-modes-last-input nil)
 
@@ -125,38 +125,14 @@
          'substring))
 
   (ido-match-modes-hack-spacebar)
-
-  (ido-match-modes--update-lighter)
-  ;; (setf ido-match-modes-lighter
-  ;;       (format "%s %s %s %s" ido-match-modes-lighter
-  ;;               ido-enable-flex-matching
-  ;;               ido-enable-prefix
-  ;;               ido-enable-regexp))
-
-  (ido-match-mode--set-bindings))
-
-(defun ido-match-modes--update-lighter ()
-  (setf ido-match-modes-lighter
-        (case ido-match-modes-mode
-          (substring "match substring")
-          (regex     "match rx")
-          (words     "match words")
-          (flex      "match flx")
-          (prefix    "match prefix")
-          (t " ???")))
-
-  (add-face-text-property 0 (length ido-match-modes-lighter)
-                          'ido-match-modes-indicator-face nil
-                          ido-match-modes-lighter))
+  (ido-match-mode--set-bindings)
+  (message "Matching %s" ido-match-modes-mode))
 
 (defun ido-match-mode--set-bindings ()
   (let ((bindings (cdr (assoc ido-match-modes-mode ido-match-mode-bindings))))
     (setf ido-enable-flex-matching (nth 0 bindings)
           ido-enable-prefix (nth 1 bindings)
           ido-enable-regexp (nth 2 bindings))))
-
-(defun ido-match-modes-display-lighter ()
-  (concat " " ido-match-modes-lighter))
 
 (defun ido-match-modes--words-to-rx (words)
   (if words
@@ -220,9 +196,6 @@
   (unless ido-match-modes-enabled
     (message "enabling ido-match-modes")
     (setf ido-match-modes-enabled t)
-    ;; turn on lighter
-    (nconc ido-grid-mode-first-line (list #'ido-match-modes-display-lighter))
-
     (advice-add 'ido-set-matches :around #'ido-match-modes--adv-set-matches)
     (advice-add 'ido-exit-minibuffer :around #'ido-match-modes--adv-exit-mb)
     (advice-add 'ido-kill-buffer-at-head :around #'ido-match-modes--adv-exit-mb)
@@ -231,16 +204,13 @@
     (ido-match-remember 'ido-enable-flex-matching nil)
     (ido-match-remember 'ido-enable-regexp nil)
     (ido-match-remember 'ido-enable-prefix nil)
-    (setf ido-match-modes-mode (or (car ido-match-modes-list) 'substring))
-    (ido-match-modes--update-lighter)))
+    (setf ido-match-modes-mode (or (car ido-match-modes-list) 'substring))))
 
 (defun ido-match-modes-disable ()
   (when ido-match-modes-enabled
     (setf ido-match-modes-enabled nil)
     (message "disabling ido-match-modes")
     (advice-remove 'ido-set-matches #'ido-match-modes--adv-set-matches)
-    (delete #'ido-match-modes-display-lighter ido-grid-mode-first-line)
-    
     (advice-remove 'ido-exit-minibuffer #'ido-match-modes--adv-exit-mb)
     (advice-remove 'ido-kill-buffer-at-head #'ido-match-modes--adv-exit-mb)
     (advice-remove 'ido-delete-file-at-head #'ido-match-modes--adv-exit-mb)
